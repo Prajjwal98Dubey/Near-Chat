@@ -2,6 +2,8 @@ import { nanoid } from "nanoid";
 import { useEffect, useRef, useState } from "react";
 import Chat from "./components/Chat";
 import toast from "react-hot-toast";
+import Header from "./components/Header";
+import { Loader } from "lucide-react";
 export default function App() {
   const [user, setUser] = useState("");
   const intervalRef = useRef(null);
@@ -68,17 +70,15 @@ export default function App() {
   };
 
   return (
-    <>
-      <div className="text-[#313131] flex justify-center items-center py-4 font-bold text-5xl">
-        Hi !!!
-      </div>
+    <div className="w-full min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 font-aladin text-gray-300">
+      <Header />
       {user.length ? (
         <>
           {showBtn && (
             <div className="flex justify-center items-center p-2">
               <button
                 onClick={handleFindUser}
-                className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white font-bold"
+                className="px-4 py-2 rounded-md bg-gradient-to-r from-blue-400 to-blue-500 hover:border hover:border-blue-800 transition duration-300 text-white font-bold font-savate"
               >
                 Find User
               </button>
@@ -92,10 +92,15 @@ export default function App() {
       )}
       {!showBtn &&
         (isLoading ? (
-          <div>Finding Users ....</div>
+          <div className="flex justify-center items-center py-2">
+            <Loader
+              className="animate-spin transition duration-200"
+              color="#ffffff"
+            />
+          </div>
         ) : (
           <Chat roomId={roomId} userId={user} />
         ))}
-    </>
+    </div>
   );
 }
