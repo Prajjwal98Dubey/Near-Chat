@@ -4,10 +4,26 @@ import { Loader } from "lucide-react";
 import { io } from "socket.io-client";
 import { UserContext } from "../contexts/UserContext.jsx";
 import { nanoid } from "nanoid";
+import { useEffect } from "react";
+import { useState } from "react";
 
 const MainContainer = () => {
   const { state: onlineState, dispatch } = use(OnlineContext);
   const { state: userState, userDispatch } = use(UserContext);
+  const [socket, setSocket] = useState("");
+  useEffect(() => {
+    if (socket) {
+      socket.on("user-found", ({ isFound, roomId }) => {
+        if (isFound) {
+          console.log("User Found");
+          dispatch({ type: "USER_FOUND" });
+        }
+      });
+      socket.on("user-disconnect", () => {
+        console.log("User Disconnected");
+      });
+    }
+  }, [socket, dispatch]);
   const handleAppearOnline = () => {
     dispatch({ type: "APPEAR_ONLINE" });
     navigator.geolocation.getCurrentPosition((pos) => {
@@ -15,16 +31,21 @@ const MainContainer = () => {
         type: "SET_USER_COORDS",
         value: { lat: pos.coords.latitude, lon: pos.coords.longitude },
       });
+      const ws = io("ws://localhost:5001");
+      let userId = nanoid();
+      userDispatch({ type: "SET_USER_ID", value: userId });
+      ws.emit("register_user", {
+        userId,
+        lat: pos.coords.latitude,
+        lon: pos.coords.longitude,
+      });
+      console.log("WEB SOCKET TYPE: ", typeof ws);
+      setSocket(ws);
     });
   };
   const handleFindUser = () => {
     dispatch({ type: "IS_FIND_USER" });
-    const ws = io("ws://localhost:5001");
-    ws.emit("register_user", {
-      userId: nanoid(),
-      lat: userState.lat,
-      lon: userState.lon,
-    });
+    socket.emit("find-user", { userId: userState.userId });
   };
 
   return (
@@ -52,7 +73,7 @@ const MainContainer = () => {
               <Loader />
             </div>
           ) : (
-            <div>Chat</div>
+            <div>Chat Here !!!</div>
           ))}
       </div>
     </div>

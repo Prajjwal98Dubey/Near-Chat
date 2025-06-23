@@ -10,6 +10,13 @@ export const statusReducer = (state, action) => {
         ["isLoading"]: true,
         ["hideBtn"]: true,
       };
+    case "USER_FOUND":
+      return {
+        ...state,
+        ["isFindUser"]: true,
+        ["hideBtn"]: true,
+        ["isLoading"]: false,
+      };
     default:
       break;
   }
