@@ -1,4 +1,4 @@
-import { use } from "react";
+import { lazy, use } from "react";
 import { OnlineContext } from "../contexts/OnlineContext.jsx";
 import { Loader } from "lucide-react";
 import { io } from "socket.io-client";
@@ -6,6 +6,8 @@ import { UserContext } from "../contexts/UserContext.jsx";
 import { nanoid } from "nanoid";
 import { useEffect } from "react";
 import { useState } from "react";
+
+const Chat = lazy(() => import("./Chat.jsx"));
 
 const MainContainer = () => {
   const { state: onlineState, dispatch } = use(OnlineContext);
@@ -15,15 +17,13 @@ const MainContainer = () => {
     if (socket) {
       socket.on("user-found", ({ isFound, roomId }) => {
         if (isFound) {
-          console.log("User Found");
           dispatch({ type: "USER_FOUND" });
+          userDispatch({ type: "SET_USER_ROOM", value: roomId });
         }
       });
-      socket.on("user-disconnect", () => {
-        console.log("User Disconnected");
-      });
+      socket.on("user-disconnect", () => {});
     }
-  }, [socket, dispatch]);
+  }, [socket, dispatch, userDispatch]);
   const handleAppearOnline = () => {
     dispatch({ type: "APPEAR_ONLINE" });
     navigator.geolocation.getCurrentPosition((pos) => {
@@ -39,7 +39,6 @@ const MainContainer = () => {
         lat: pos.coords.latitude,
         lon: pos.coords.longitude,
       });
-      console.log("WEB SOCKET TYPE: ", typeof ws);
       setSocket(ws);
     });
   };
@@ -73,7 +72,9 @@ const MainContainer = () => {
               <Loader />
             </div>
           ) : (
-            <div>Chat Here !!!</div>
+            <div>
+              <Chat />
+            </div>
           ))}
       </div>
     </div>
