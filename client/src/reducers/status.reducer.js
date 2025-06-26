@@ -17,6 +17,13 @@ export const statusReducer = (state, action) => {
         ["hideBtn"]: true,
         ["isLoading"]: false,
       };
+    case "USER_LEAVE": // either i leave the chat or other user
+      return {
+        ...state,
+        ["isFindUser"]: false,
+        ["hideBtn"]: false,
+        ["isLoading"]: false,
+      };
     default:
       break;
   }

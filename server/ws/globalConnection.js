@@ -65,25 +65,39 @@ io.on("connection", (socket) => {
     );
     await handleFindUser(userId);
   });
-  socket.on("find_user", async ({ userId }) => {
+  socket.on("find-user", async ({ userId }) => {
     await handleFindUser(userId);
+  });
+  socket.on("user-left", async ({ roomId, userId }) => {
+    const room = await redisClient.get(`roomId:${roomId}`);
+    if (room) {
+      let otherUser = JSON.parse(room).filter((user) => user != userId)[0];
+      let otherUserDetail = await redisClient.get(`user:${otherUser}`);
+      let otherUserSocket = io.sockets.sockets.get(
+        JSON.parse(otherUserDetail)["socketId"]
+      );
+      otherUserSocket.emit("user-disconnect");
+      await redisClient.del(`roomId:${roomId}`);
+    }
   });
   socket.on("disconnecting", async () => {
     let room = socket.room;
     let roomDetail = await redisClient.get(`roomId:${room}`);
     await redisClient.del(`user:${socket.user}`);
-    let otherUser = "";
-    for (let u of JSON.parse(roomDetail)) {
-      if (u != socket.user) {
-        otherUser = u;
+    if (roomDetail) {
+      let otherUser = "";
+      for (let u of JSON.parse(roomDetail)) {
+        if (u != socket.user) {
+          otherUser = u;
+        }
       }
+      await redisClient.del(`roomId:${room}`);
+      let otherUserDetail = await redisClient.get(`user:${otherUser}`);
+      let otherUserSocket = io.sockets.sockets.get(
+        JSON.parse(otherUserDetail)["socketId"]
+      );
+      otherUserSocket.emit("user-disconnect");
     }
-    await redisClient.del(`roomId:${room}`);
-    let otherUserDetail = await redisClient.get(`user:${otherUser}`);
-    let otherUserSocket = io.sockets.sockets.get(
-      JSON.parse(otherUserDetail)["socketId"]
-    );
-    otherUserSocket.emit("user-disconnect");
 
     socket.disconnect();
   });

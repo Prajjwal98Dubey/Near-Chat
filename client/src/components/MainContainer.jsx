@@ -6,6 +6,7 @@ import { UserContext } from "../contexts/UserContext.jsx";
 import { nanoid } from "nanoid";
 import { useEffect } from "react";
 import { useState } from "react";
+import toast from "react-hot-toast";
 
 const Chat = lazy(() => import("./Chat.jsx"));
 
@@ -21,7 +22,13 @@ const MainContainer = () => {
           userDispatch({ type: "SET_USER_ROOM", value: roomId });
         }
       });
-      socket.on("user-disconnect", () => {});
+      socket.on("user-disconnect", () => {
+        dispatch({ type: "USER_LEAVE" });
+        toast.error("⚠️⚠️⚠️ user left ", {
+          position: "top-center",
+          duration: 1500,
+        });
+      });
     }
   }, [socket, dispatch, userDispatch]);
   const handleAppearOnline = () => {
@@ -73,7 +80,7 @@ const MainContainer = () => {
             </div>
           ) : (
             <div>
-              <Chat />
+              <Chat initialSocket={socket} />
             </div>
           ))}
       </div>

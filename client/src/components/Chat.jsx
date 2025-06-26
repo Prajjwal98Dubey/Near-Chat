@@ -2,15 +2,23 @@
 import { use, useEffect, useRef, useState } from "react";
 import { UserContext } from "../contexts/UserContext";
 import { io } from "socket.io-client";
-const Chat = () => {
+import toast from "react-hot-toast";
+import { OnlineContext } from "../contexts/OnlineContext";
+const Chat = ({ initialSocket }) => {
   const { state } = use(UserContext);
+  const { dispatch } = use(OnlineContext);
   const [chats, setChats] = useState([]);
   const [inpText, setInpText] = useState("");
-  const socketRef = useRef(io("ws://localhost:5003"));
+  const [chatSocket, setChatSocket] = useState("");
   const scrollRef = useRef(null);
   const handleSendChat = (e) => {
     e.preventDefault();
-    socketRef.current.emit("message-from-client", {
+    if (inpText.length === 0)
+      return toast.error("write something ...", {
+        position: "top-center",
+        duration: 1500,
+      });
+    chatSocket.emit("message-from-client", {
       message: inpText,
       roomId: state.roomId,
     });
@@ -23,15 +31,32 @@ const Chat = () => {
     });
     setInpText("");
   };
-  useEffect(() => {
-    socketRef.current.emit("join-room", { roomId: state.roomId });
-    socketRef.current.on("message-from-server", ({ message }) => {
-      setChats((prev) => [...prev, { message, isMe: false, time: Date.now() }]);
-      requestAnimationFrame(() => {
-        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-      });
+  const handleEndChat = () => {
+    dispatch({ type: "USER_LEAVE" });
+    initialSocket.emit("user-left", {
+      roomId: state["roomId"],
+      userId: state["userId"],
     });
-  }, [state.roomId]);
+  };
+  useEffect(() => {
+    if (!chatSocket) {
+      setChatSocket(io("ws://localhost:5003"));
+    }
+  }, [chatSocket]);
+  useEffect(() => {
+    if (chatSocket) {
+      chatSocket.emit("join-room", { roomId: state.roomId });
+      chatSocket.on("message-from-server", ({ message }) => {
+        setChats((prev) => [
+          ...prev,
+          { message, isMe: false, time: Date.now() },
+        ]);
+        requestAnimationFrame(() => {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        });
+      });
+    }
+  }, [state.roomId, chatSocket]);
 
   return (
     <div className="fixed bottom-0 top-0 left-0 right-0 z-10 w-full min-h-screen font-inter">
@@ -60,6 +85,13 @@ const Chat = () => {
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                   <span className="text-sm text-slate-400">Connected</span>
+                  <button
+                    type="button"
+                    onClick={handleEndChat}
+                    className="w-fit h-fit px-3 py-2 rounded-md bg-gradient-to-r border border-transparent hover:border hover:border-red-300 from-red-500 to-red-600 text-white font-bold mx-1"
+                  >
+                    End Chat
+                  </button>
                 </div>
               </div>
             </div>
