@@ -11,7 +11,6 @@ const io = new Server(server, {
     origin: "*",
   },
 });
-
 let redisClient = getRedisClient();
 
 // when redis is not connected !!
@@ -19,6 +18,54 @@ if (!redisClient) {
   redisClient = await connectRedis();
 }
 
+// used for calculating minimum distance
+function haversineDistance(coord1, coord2) {
+  const toRadians = (deg) => (deg * Math.PI) / 180;
+
+  const R = 6371; // Radius of Earth in kilometers
+  const lat1 = toRadians(coord1.lat);
+  const lon1 = toRadians(coord1.lon);
+  const lat2 = toRadians(coord2.lat);
+  const lon2 = toRadians(coord2.lon);
+
+  const dlat = lat2 - lat1;
+  const dlon = lon2 - lon1;
+
+  const a =
+    Math.sin(dlat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dlon / 2) ** 2;
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c; // Distance in kilometers
+}
+const findNearestUser = async (userId) => {
+  const givenUserCoordinates = await redisClient.get(`user:${userId}`);
+  const { lat, lon } = JSON.parse(givenUserCoordinates);
+
+  const allUsers = await redisClient.keys("user:*");
+  const allUsersDetails = [];
+  for (let u of allUsers) {
+    if (u.split(":").at(-1) != userId) {
+      allUsersDetails.push(redisClient.get(u));
+    }
+  }
+  let usersCoordinates = await Promise.allSettled(allUsersDetails);
+  if (usersCoordinates.length === 0) return [];
+  let minDistance = Infinity;
+  let nearestNeighbour = "";
+  for (let user of usersCoordinates) {
+    let distance = haversineDistance(
+      { lat, lon },
+      { lat: JSON.parse(user.value).lat, lon: JSON.parse(user.value).lon }
+    );
+    if (distance < minDistance) {
+      minDistance = distance;
+      nearestNeighbour = JSON.parse(user.value).userId;
+    }
+  }
+  return [nearestNeighbour, minDistance];
+};
 const handleSendJoinEvent = async (user, roomId) => {
   const userDetails = await redisClient.get(`user:${user}`);
   const { socketId } = JSON.parse(userDetails);
@@ -27,20 +74,11 @@ const handleSendJoinEvent = async (user, roomId) => {
   socket.room = roomId;
   socket.user = user;
 };
-
 const handleFindUser = async (userId) => {
   // search for keys with pattern user:userId
-  let allUsers = await redisClient.keys(`user:*`);
-  const partners = [];
   let isFound = false;
-  for (let u of allUsers) {
-    if (u.split(":").at(-1) != userId) {
-      partners.push(u.split(":").at(-1));
-      partners.push(userId);
-      isFound = true;
-      break;
-    }
-  }
+  let nearestUser = await findNearestUser(userId);
+  if (nearestUser.length) isFound = true;
   if (!isFound) {
     const user = await redisClient.get(`user:${userId}`);
     const { socketId } = JSON.parse(user);
@@ -48,20 +86,21 @@ const handleFindUser = async (userId) => {
     return;
   }
   const roomId = nanoid();
-  await handleSendJoinEvent(partners[0], roomId);
-  await handleSendJoinEvent(partners[1], roomId);
+  await handleSendJoinEvent(nearestUser[0], roomId);
+  await handleSendJoinEvent(userId, roomId);
   await redisClient.set(
     `roomId:${roomId}`,
-    JSON.stringify([partners[0], partners[1]])
+    JSON.stringify([userId, nearestUser[0]])
   );
 };
 
 io.on("connection", (socket) => {
   socket.on("register_user", async ({ userId, lat, lon }) => {
     socket.searching = true; // searching for user or waiting for being searched
+    socket.user = userId;
     await redisClient.set(
       `user:${userId}`,
-      JSON.stringify({ lat, lon, socketId: socket.id })
+      JSON.stringify({ lat, lon, socketId: socket.id, userId })
     );
     await handleFindUser(userId);
   });
@@ -80,6 +119,16 @@ io.on("connection", (socket) => {
       await redisClient.del(`roomId:${roomId}`);
     }
   });
+  
+  // CHAT
+  socket.on("join-room", ({ roomId }) => {
+    socket.join(roomId);
+  });
+  socket.on("message-from-client", ({ message, roomId }) => {
+    socket.to(roomId).emit("message-from-server", { message });
+  });
+ // 
+
   socket.on("disconnecting", async () => {
     let room = socket.room;
     let roomDetail = await redisClient.get(`roomId:${room}`);
@@ -102,7 +151,6 @@ io.on("connection", (socket) => {
     socket.disconnect();
   });
 });
-
 const startGlobalConnection = () => {
   server.listen(5001, () => console.log("global connection listening at 5001"));
 };

@@ -4,6 +4,7 @@ import { UserContext } from "../contexts/UserContext";
 import { io } from "socket.io-client";
 import toast from "react-hot-toast";
 import { OnlineContext } from "../contexts/OnlineContext";
+import { WS_LOCAL_GLOBAL_CONNECTION } from "../apis/socket.api";
 const Chat = ({ initialSocket }) => {
   const { state } = use(UserContext);
   const { dispatch } = use(OnlineContext);
@@ -40,7 +41,7 @@ const Chat = ({ initialSocket }) => {
   };
   useEffect(() => {
     if (!chatSocket) {
-      setChatSocket(io("ws://localhost:5003"));
+      setChatSocket(io(WS_LOCAL_GLOBAL_CONNECTION));
     }
   }, [chatSocket]);
   useEffect(() => {
@@ -59,7 +60,7 @@ const Chat = ({ initialSocket }) => {
   }, [state.roomId, chatSocket]);
 
   return (
-    <div className="fixed bottom-0 top-0 left-0 right-0 z-10 w-full min-h-screen font-inter">
+    <div className="fixed  z-50  top-0 left-0 right-0 w-full min-h-screen font-inter">
       <div className="flex justify-center items-center py-3 "></div>
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4 animate-slideUp rounded-l-[36px] rounded-r-[36px]">
         <div className="w-full max-w-4xl mx-auto">
