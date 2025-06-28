@@ -1,16 +1,15 @@
 /* eslint-disable no-undef */
 import { use, useEffect, useRef, useState } from "react";
 import { UserContext } from "../contexts/UserContext";
-import { io } from "socket.io-client";
 import toast from "react-hot-toast";
 import { OnlineContext } from "../contexts/OnlineContext";
-import { WS_LOCAL_GLOBAL_CONNECTION } from "../apis/socket.api";
+
 const Chat = ({ initialSocket }) => {
   const { state } = use(UserContext);
   const { dispatch } = use(OnlineContext);
   const [chats, setChats] = useState([]);
   const [inpText, setInpText] = useState("");
-  const [chatSocket, setChatSocket] = useState("");
+  const [chatSocket] = useState(initialSocket);
   const scrollRef = useRef(null);
   const handleSendChat = (e) => {
     e.preventDefault();
@@ -39,11 +38,6 @@ const Chat = ({ initialSocket }) => {
       userId: state["userId"],
     });
   };
-  useEffect(() => {
-    if (!chatSocket) {
-      setChatSocket(io(WS_LOCAL_GLOBAL_CONNECTION));
-    }
-  }, [chatSocket]);
   useEffect(() => {
     if (chatSocket) {
       chatSocket.emit("join-room", { roomId: state.roomId });

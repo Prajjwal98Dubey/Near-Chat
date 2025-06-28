@@ -42,11 +42,16 @@ function haversineDistance(coord1, coord2) {
 const findNearestUser = async (userId) => {
   const givenUserCoordinates = await redisClient.get(`user:${userId}`);
   const { lat, lon } = JSON.parse(givenUserCoordinates);
-
+  const connectedClients = await redisClient.get("connected"); // all the clients who have been matched
   const allUsers = await redisClient.keys("user:*");
   const allUsersDetails = [];
   for (let u of allUsers) {
-    if (u.split(":").at(-1) != userId) {
+    if (
+      u.split(":").at(-1) != userId &&
+      JSON.parse(connectedClients).every(
+        (client) => client !== u.split(":").at(-1)
+      )
+    ) {
       allUsersDetails.push(redisClient.get(u));
     }
   }
@@ -88,6 +93,18 @@ const handleFindUser = async (userId) => {
   const roomId = nanoid();
   await handleSendJoinEvent(nearestUser[0], roomId);
   await handleSendJoinEvent(userId, roomId);
+  const connectedClients = await redisClient.get("connected");
+  if (!connectedClients) {
+    await redisClient.set(
+      "connected",
+      JSON.stringify([nearestUser[0], userId])
+    );
+  } else {
+    await redisClient.set(
+      "connected",
+      JSON.stringify([...JSON.parse(connectedClients), nearestUser[0], userId])
+    );
+  }
   await redisClient.set(
     `roomId:${roomId}`,
     JSON.stringify([userId, nearestUser[0]])
@@ -116,10 +133,18 @@ io.on("connection", (socket) => {
         JSON.parse(otherUserDetail)["socketId"]
       );
       otherUserSocket.emit("user-disconnect");
+      let previousConnectedClients = await redisClient.get("connected");
+      let updatedConnectedClients = JSON.parse(previousConnectedClients).filter(
+        (client) => client !== userId && client !== otherUser
+      );
+      await redisClient.set(
+        "connected",
+        JSON.stringify(updatedConnectedClients)
+      );
       await redisClient.del(`roomId:${roomId}`);
     }
   });
-  
+
   // CHAT
   socket.on("join-room", ({ roomId }) => {
     socket.join(roomId);
@@ -127,7 +152,7 @@ io.on("connection", (socket) => {
   socket.on("message-from-client", ({ message, roomId }) => {
     socket.to(roomId).emit("message-from-server", { message });
   });
- // 
+  //
 
   socket.on("disconnecting", async () => {
     let room = socket.room;
@@ -146,6 +171,14 @@ io.on("connection", (socket) => {
         JSON.parse(otherUserDetail)["socketId"]
       );
       otherUserSocket.emit("user-disconnect");
+      let previousConnectedClients = await redisClient.get("connected");
+      let updatedConnectedClients = JSON.parse(previousConnectedClients).filter(
+        (client) => client !== socket.user && client !== otherUser
+      );
+      await redisClient.set(
+        "connected",
+        JSON.stringify(updatedConnectedClients)
+      );
     }
 
     socket.disconnect();

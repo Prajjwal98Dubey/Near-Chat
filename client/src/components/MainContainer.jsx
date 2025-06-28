@@ -70,7 +70,7 @@ const MainContainer = () => {
         <div className="w-full max-w-4xl">
           <div className="text-center mb-8">
             <h1 className="text-4xl font-extrabold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
-              Anonymous Chat
+              Near Chat
             </h1>
             <p className="text-gray-600">
               Connect with strangers from around the world
