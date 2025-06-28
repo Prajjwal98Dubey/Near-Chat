@@ -185,7 +185,9 @@ io.on("connection", (socket) => {
   });
 });
 const startGlobalConnection = () => {
-  server.listen(5001, () => console.log("global connection listening at 5001"));
+  server.listen(process.env.PORT || 5000, () =>
+    console.log("global connection listening...")
+  );
 };
 
 export default startGlobalConnection;
