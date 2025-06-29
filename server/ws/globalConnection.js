@@ -7,8 +7,9 @@ const app = express();
 const server = http.createServer(app);
 
 const io = new Server(server, {
+  path: "/socket",
   cors: {
-    origin: "*",
+    origin: "http://localhost:5173",
   },
 });
 let redisClient = getRedisClient();
@@ -185,7 +186,7 @@ io.on("connection", (socket) => {
   });
 });
 const startGlobalConnection = () => {
-  server.listen(process.env.PORT || 5000, () =>
+  server.listen(process.env.PORT || 5000, "0.0.0.0", () =>
     console.log("global connection listening...")
   );
 };

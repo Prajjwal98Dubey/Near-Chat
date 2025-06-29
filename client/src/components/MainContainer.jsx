@@ -7,7 +7,7 @@ import { nanoid } from "nanoid";
 import { useEffect } from "react";
 import { useState } from "react";
 import toast from "react-hot-toast";
-import { WS_LOCAL_GLOBAL_CONNECTION } from "../apis/socket.api.jsx";
+// import { WS_LOCAL_GLOBAL_CONNECTION } from "../apis/socket.api.jsx";
 
 const Chat = lazy(() => import("./Chat.jsx"));
 
@@ -39,7 +39,10 @@ const MainContainer = () => {
         type: "SET_USER_COORDS",
         value: { lat: pos.coords.latitude, lon: pos.coords.longitude },
       });
-      const ws = io(WS_LOCAL_GLOBAL_CONNECTION);
+      const ws = io("wss://nearchat.fun", {
+        path: "/socket",
+        transports: ["websocket"],
+      });
       let userId = nanoid();
       userDispatch({ type: "SET_USER_ID", value: userId });
       ws.emit("register_user", {
