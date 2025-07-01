@@ -3,11 +3,13 @@ import http from "http";
 import { Server } from "socket.io";
 import { connectRedis, getRedisClient } from "../connectRedis.js";
 import { nanoid } from "nanoid";
+import dotenv from "dotenv";
+dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
 const io = new Server(server, {
-  path: "/socket",
+  path: "/socket/",
   cors: {
     origin: "http://localhost:5173",
   },
@@ -187,7 +189,7 @@ io.on("connection", (socket) => {
 });
 const startGlobalConnection = () => {
   server.listen(process.env.PORT || 5000, "0.0.0.0", () =>
-    console.log("global connection listening...")
+    console.log(`global connection listening... ${process.env.PORT}`)
   );
 };
 

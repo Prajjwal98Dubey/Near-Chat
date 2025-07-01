@@ -39,8 +39,8 @@ const MainContainer = () => {
         type: "SET_USER_COORDS",
         value: { lat: pos.coords.latitude, lon: pos.coords.longitude },
       });
-      const ws = io("wss://nearchat.fun", {
-        path: "/socket",
+      const ws = io("ws://localhost:5000", {
+        path: "/socket/",
         transports: ["websocket"],
       });
       let userId = nanoid();
